@@ -1,0 +1,83 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Retro NES Emulator</title>
+  <style>
+    body {
+      font-family: monospace;
+      text-align: center;
+      background: #111;
+      color: #0f0;
+      margin: 0;
+      padding: 0;
+    }
+    canvas {
+      border: 4px solid #0f0;
+      margin-top: 20px;
+    }
+    #rom-input, #game-select {
+      margin-top: 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Retro NES Emulator</h1>
+  <select id="game-select">
+    <option value="">-- Select a Game --</option>
+    <option value="games/dpad_hero.nes">D‑Pad Hero</option>
+    <option value="games/alter_ego.nes">Alter Ego</option>
+    <option value="games/chase.nes">Chase</option>
+  </select>
+  <br>
+  <input type="file" id="rom-input" accept=".nes" />
+  <br>
+  <canvas id="emulator" width="256" height="240"></canvas>
+
+  <script src="https://unpkg.com/jsnes@0.8.0/dist/jsnes.min.js"></script>
+  <script>
+    const canvas = document.getElementById('emulator');
+    const ctx = canvas.getContext('2d');
+    const nes = new jsnes.NES({
+      onFrame: function(framebuffer_24) {
+        const imageData = ctx.getImageData(0, 0, 256, 240);
+        const data = imageData.data;
+        for (let i = 0; i < 256 * 240; i++) {
+          const j = i * 4;
+          const color = framebuffer_24[i];
+          data[j] = (color >> 16) & 0xFF;
+          data[j + 1] = (color >> 8) & 0xFF;
+          data[j + 2] = color & 0xFF;
+          data[j + 3] = 0xFF;
+        }
+        ctx.putImageData(imageData, 0, 0);
+      }
+    });
+
+    document.getElementById('rom-input').addEventListener('change', function(e) {
+      const reader = new FileReader();
+      reader.onload = function() {
+        nes.loadROM(reader.result);
+        nes.start();
+      };
+      reader.readAsBinaryString(e.target.files[0]);
+    });
+
+    document.getElementById('game-select').addEventListener('change', function(e) {
+      const url = e.target.value;
+      if (url) {
+        fetch(url)
+          .then(response => response.arrayBuffer())
+          .then(buffer => {
+            const binary = Array.from(new Uint8Array(buffer)).map(byte => String.fromCharCode(byte)).join('');
+            nes.loadROM(binary);
+            nes.start();
+          });
+      }
+    });
+  </script>
+</body>
+</html>
